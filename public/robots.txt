@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://www.tarimbiaconstruction.com/sitemap.xml
+
+# Security - Prevent access to sensitive paths
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
