@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { sanitizeInput, sanitizeEmail, sanitizePhone, validateContactForm } from "@/lib/security";
+import { sanitizePhone, validateContactForm } from "@/lib/security";
 
 interface FormState {
   name: string;
@@ -23,20 +23,25 @@ export default function ContactForm() {
   const [errors, setErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  // Honeypot: hidden from people, filled in by spam bots.
+  const [website, setWebsite] = useState("");
 
+  // Only light filtering while typing. Full sanitising and validation run on
+  // submit and again on the server; running them per keystroke wiped
+  // half-typed emails and removed spaces between words.
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
-    let sanitizedValue = value;
+
+    let cleaned: string;
     if (name === "email") {
-      sanitizedValue = sanitizeEmail(value);
+      cleaned = value.replace(/[<>'"\s]/g, "");
     } else if (name === "phone") {
-      sanitizedValue = sanitizePhone(value);
+      cleaned = sanitizePhone(value);
     } else {
-      sanitizedValue = sanitizeInput(value);
+      cleaned = value.replace(/[<>]/g, "");
     }
-    
-    setFormData((prev) => ({ ...prev, [name]: sanitizedValue }));
+
+    setFormData((prev) => ({ ...prev, [name]: cleaned }));
     setErrors([]);
   };
 
@@ -53,13 +58,32 @@ export default function ContactForm() {
       return;
     }
     
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    setSubmitSuccess(true);
-    setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
-    setIsSubmitting(false);
-    
-    setTimeout(() => setSubmitSuccess(false), 5000);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, website }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setErrors([
+          data?.error ||
+            "Sorry, your message could not be sent. Please try again or contact us directly.",
+        ]);
+        return;
+      }
+
+      setSubmitSuccess(true);
+      setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
+      setTimeout(() => setSubmitSuccess(false), 5000);
+    } catch {
+      setErrors([
+        "Could not reach the server. Please check your connection and try again.",
+      ]);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -80,7 +104,20 @@ export default function ContactForm() {
           <p className="text-sm">We&apos;ll get back to you soon.</p>
         </div>
       )}
-      
+
+      <div aria-hidden="true" className="absolute left-[-9999px] w-px h-px overflow-hidden">
+        <label htmlFor="website">Leave this field empty</label>
+        <input
+          type="text"
+          id="website"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+        />
+      </div>
+
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
           Full Name <span className="text-red-500">*</span>
