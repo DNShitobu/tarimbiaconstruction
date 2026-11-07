@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { sanitizePhone, validateContactForm } from "@/lib/security";
 
 interface FormState {
@@ -25,6 +25,11 @@ export default function ContactForm() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   // Honeypot: hidden from people, filled in by spam bots.
   const [website, setWebsite] = useState("");
+  // When the form appeared; the server rejects submissions made too quickly.
+  const startedAt = useRef(0);
+  useEffect(() => {
+    startedAt.current = Date.now();
+  }, []);
 
   // Only light filtering while typing. Full sanitising and validation run on
   // submit and again on the server; running them per keystroke wiped
@@ -62,7 +67,11 @@ export default function ContactForm() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, website }),
+        body: JSON.stringify({
+          ...formData,
+          website,
+          elapsedMs: Date.now() - startedAt.current,
+        }),
       });
 
       if (!res.ok) {
@@ -76,6 +85,7 @@ export default function ContactForm() {
 
       setSubmitSuccess(true);
       setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
+      startedAt.current = Date.now();
       setTimeout(() => setSubmitSuccess(false), 5000);
     } catch {
       setErrors([
