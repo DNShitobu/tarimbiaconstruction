@@ -5,3 +5,28 @@
 
 [build.environment]
   NODE_VERSION = "20"
+
+# Send the .org domain to the main .com site, keeping the page path.
+[[redirects]]
+  from = "https://tarimbiaconstruction.org/*"
+  to = "https://www.tarimbiaconstruction.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.tarimbiaconstruction.org/*"
+  to = "https://www.tarimbiaconstruction.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://tarimbiaconstruction.org/*"
+  to = "https://www.tarimbiaconstruction.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://www.tarimbiaconstruction.org/*"
+  to = "https://www.tarimbiaconstruction.com/:splat"
+  status = 301
+  force = true
